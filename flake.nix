@@ -32,6 +32,8 @@
           pipewire
           jack2
 
+          libGL
+          fontconfig
           libxkbcommon
           wayland
           wayland.dev

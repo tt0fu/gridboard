@@ -1,7 +1,8 @@
-use crate::audio::load_audio;
+use crate::load_audio::load_audio;
 use audioadapter::Adapter;
 use cpal::{
-    SupportedStreamConfig,
+    BufferSize::Fixed,
+    Device, Stream, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
 use rubato::audioadapter_buffers::owned::InterleavedOwned;
@@ -30,20 +31,17 @@ impl Play {
 }
 
 pub struct AudioEngine {
-    _stream: cpal::Stream,
-    config: SupportedStreamConfig,
+    _stream: Stream,
+    config: StreamConfig,
     cache: Mutex<HashMap<PathBuf, Arc<InterleavedOwned<f32>>>>,
     plays: Arc<Mutex<Vec<Play>>>,
 }
 
 impl AudioEngine {
-    pub fn new() -> Self {
+    pub fn from_config(config: &StreamConfig) -> Self {
         let device = cpal::default_host()
             .default_output_device()
             .expect("Failed to find output device");
-        let config = device
-            .default_output_config()
-            .expect("Failed to find default config of output device");
 
         let plays = Arc::new(Mutex::new(Vec::new()));
         let sources_clone = Arc::clone(&plays);
@@ -53,10 +51,18 @@ impl AudioEngine {
 
         Self {
             _stream: stream,
-            config,
+            config: config.clone(),
             cache: Mutex::new(HashMap::new()),
             plays,
         }
+    }
+
+    pub fn from_parameters(channels: u16, sample_rate: u32, buffer_size: u32) -> Self {
+        Self::from_config(&StreamConfig {
+            channels,
+            sample_rate,
+            buffer_size: Fixed(buffer_size),
+        })
     }
 
     pub fn play(&mut self, path: &Path) {
@@ -67,8 +73,8 @@ impl AudioEngine {
             None => {
                 let generated = Arc::new(load_audio(
                     path,
-                    self.config.sample_rate(),
-                    self.config.channels(),
+                    self.config.sample_rate,
+                    self.config.channels,
                 ));
                 cache.insert(path_buf, generated.clone());
                 &generated.clone()
@@ -88,57 +94,27 @@ impl AudioEngine {
     }
 
     fn build_stream(
-        device: &cpal::Device,
-        config: &cpal::SupportedStreamConfig,
+        device: &Device,
+        config: &StreamConfig,
         plays: Arc<Mutex<Vec<Play>>>,
     ) -> cpal::Stream {
-        match config.sample_format() {
-            cpal::SampleFormat::I8 => Self::build_stream_typed::<i8>(device, config, plays),
-            cpal::SampleFormat::I16 => Self::build_stream_typed::<i16>(device, config, plays),
-            cpal::SampleFormat::I24 => Self::build_stream_typed::<cpal::I24>(device, config, plays),
-            cpal::SampleFormat::I32 => Self::build_stream_typed::<i32>(device, config, plays),
-            cpal::SampleFormat::I64 => Self::build_stream_typed::<i64>(device, config, plays),
-            cpal::SampleFormat::U8 => Self::build_stream_typed::<u8>(device, config, plays),
-            cpal::SampleFormat::U16 => Self::build_stream_typed::<u16>(device, config, plays),
-            cpal::SampleFormat::U24 => Self::build_stream_typed::<cpal::U24>(device, config, plays),
-            cpal::SampleFormat::U32 => Self::build_stream_typed::<u32>(device, config, plays),
-            cpal::SampleFormat::U64 => Self::build_stream_typed::<u64>(device, config, plays),
-            cpal::SampleFormat::F32 => Self::build_stream_typed::<f32>(device, config, plays),
-            cpal::SampleFormat::F64 => Self::build_stream_typed::<f64>(device, config, plays),
-            sample_format => panic!("Unsupported sample format '{sample_format}'"),
-        }
-    }
-
-    fn build_stream_typed<T>(
-        device: &cpal::Device,
-        config: &cpal::SupportedStreamConfig,
-        plays: Arc<Mutex<Vec<Play>>>,
-    ) -> cpal::Stream
-    where
-        T: cpal::SizedSample + cpal::FromSample<f32>,
-    {
-        let channels = config.channels() as usize;
+        let channels = config.channels as usize;
 
         device
             .build_output_stream(
-                &config.config(),
-                move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
+                &config,
+                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     let mut plays_guard = plays.lock().expect("Failed to aquire plays mutex");
-                    data.fill(T::from_sample(0.0f32));
+                    data.fill(0.0f32);
                     for frame in data.chunks_mut(channels) {
                         plays_guard.retain(|a| a.is_playing());
 
-                        let mut sum = vec![0.0f32; channels];
                         let mut cur = vec![0.0f32; channels];
                         for play in plays_guard.iter_mut() {
                             play.advance(cur.as_mut_slice());
                             for i in 0..channels {
-                                sum[i] += cur[i];
+                                frame[i] += cur[i];
                             }
-                        }
-
-                        for i in 0..channels {
-                            frame[i] = T::from_sample(sum[i]);
                         }
                     }
                 },
@@ -146,5 +122,11 @@ impl AudioEngine {
                 None,
             )
             .expect("Failed to build audio stream")
+    }
+}
+
+impl Default for AudioEngine {
+    fn default() -> Self {
+        Self::from_parameters(2, 48000, 4096)
     }
 }
