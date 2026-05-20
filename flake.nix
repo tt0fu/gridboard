@@ -52,10 +52,7 @@
             PKG_CONFIG_PATH = "${pkgs.alsa-lib.dev}/lib/pkgconfig:${pkgs.jack2.dev}/lib/pkgconfig";
           };
         };
-        # packages = {
-        #   default = pkgs.callPackage ./package.nix { };
-        #   portable = pkgs.callPackage ./package.nix { portable = true; };
-        # };
+        packages.default = pkgs.callPackage ./package.nix { };
       }
     );
 }
