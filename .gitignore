@@ -1,5 +1,4 @@
 /target
 **/*.mp3
 **/*.wav
-**/*.png
 config.jsonc
