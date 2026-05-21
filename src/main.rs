@@ -31,7 +31,7 @@ fn main() -> Result {
         ..Default::default()
     };
     run_native(
-        "My egui App",
+        "Gridboard",
         options,
         Box::new(|cc| {
             install_image_loaders(&cc.egui_ctx);
