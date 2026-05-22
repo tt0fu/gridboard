@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   rustPlatform,
   pkg-config,
   alsa-lib,
@@ -15,10 +16,19 @@
   libxcursor,
   libxi,
   libxrandr,
+  makeDesktopItem,
   ...
 }:
+let
+  name = "gridboard";
+  desktopItem = makeDesktopItem {
+    inherit name;
+    desktopName = name;
+    exec = name;
+  };
+in
 rustPlatform.buildRustPackage rec {
-  pname = "gridboard";
+  pname = name;
   version = (fromTOML (builtins.readFile ./Cargo.toml)).package.version;
   doCheck = false;
   cargoLock = {
@@ -55,6 +65,19 @@ rustPlatform.buildRustPackage rec {
   postFixup = ''
     patchelf \
       --set-rpath ${lib.makeLibraryPath buildInputs} \
-      $out/bin/gridboard
+      $out/bin/${name}
   '';
+
+  postInstall = ''
+    install -Dm444 ${desktopItem}/share/applications/*.desktop -t $out/share/applications
+  '';
+
+  passthru = {
+    desktopItems = [ desktopItem ];
+  };
+
+  meta = {
+    description = "A simple soundboard";
+    mainProgram = name;
+  };
 }
