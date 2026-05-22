@@ -35,6 +35,7 @@ pub struct AudioEngine {
     config: StreamConfig,
     cache: Mutex<HashMap<PathBuf, Arc<InterleavedOwned<f32>>>>,
     plays: Arc<Mutex<Vec<Play>>>,
+    volume: Arc<Mutex<f32>>,
 }
 
 impl AudioEngine {
@@ -44,9 +45,9 @@ impl AudioEngine {
             .expect("Failed to find output device");
 
         let plays = Arc::new(Mutex::new(Vec::new()));
-        let sources_clone = Arc::clone(&plays);
+        let volume = Arc::new(Mutex::new(1.0));
 
-        let stream = Self::build_stream(&device, &config, sources_clone);
+        let stream = Self::build_stream(&device, &config, plays.clone(), volume.clone());
         stream.play().expect("Failed to play stream");
 
         Self {
@@ -54,6 +55,7 @@ impl AudioEngine {
             config: config.clone(),
             cache: Mutex::new(HashMap::new()),
             plays,
+            volume,
         }
     }
 
@@ -93,10 +95,19 @@ impl AudioEngine {
             .clear();
     }
 
+    pub fn get_volume(&mut self) -> f32 {
+        *self.volume.lock().expect("Failed to aquire volume mutex")
+    }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        *self.volume.lock().expect("Failed to aquire volume mutex") = volume;
+    }
+
     fn build_stream(
         device: &Device,
         config: &StreamConfig,
         plays: Arc<Mutex<Vec<Play>>>,
+        volume: Arc<Mutex<f32>>,
     ) -> cpal::Stream {
         let channels = config.channels as usize;
 
@@ -105,6 +116,7 @@ impl AudioEngine {
                 &config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     let mut plays_guard = plays.lock().expect("Failed to aquire plays mutex");
+                    let volume = *volume.lock().expect("Failed to aquire volume mutex");
                     data.fill(0.0f32);
                     for frame in data.chunks_mut(channels) {
                         plays_guard.retain(|a| a.is_playing());
@@ -113,7 +125,7 @@ impl AudioEngine {
                         for play in plays_guard.iter_mut() {
                             play.advance(cur.as_mut_slice());
                             for i in 0..channels {
-                                frame[i] += cur[i];
+                                frame[i] += cur[i] * volume;
                             }
                         }
                     }

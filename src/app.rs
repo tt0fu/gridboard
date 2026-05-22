@@ -1,6 +1,6 @@
 use crate::{audio_engine::AudioEngine, config::Config};
 use eframe::egui;
-use egui::{Button, vec2};
+use egui::{Button, Slider, vec2};
 
 pub struct MyApp {
     config: Config,
@@ -29,12 +29,26 @@ impl eframe::App for MyApp {
         let button_height = (available.y - spacing.y * (rows - 1.0)) / rows;
 
         ui.vertical(|ui| {
-            if ui
-                .add_sized(vec2(available.x, button_height), Button::new("stop all"))
-                .clicked()
-            {
-                self.audio_engine.stop_all();
-            }
+            ui.horizontal(|ui| {
+                let cols = 2.0;
+                let button_width = (available.x - spacing.x * (cols - 1.0)) / cols;
+                let button_size = vec2(button_width, button_height);
+                if ui.add_sized(button_size, Button::new("stop all")).clicked() {
+                    self.audio_engine.stop_all();
+                }
+                ui.spacing_mut().slider_width = button_width - 50.0 - spacing.x;
+                if ui
+                    .add(Slider::from_get_set(0.0..=3.0, |v: Option<f64>| {
+                        if let Some(v) = v {
+                            self.audio_engine.set_volume(v as f32);
+                        }
+                        self.audio_engine.get_volume() as f64
+                    }))
+                    .double_clicked()
+                {
+                    self.audio_engine.set_volume(1.0);
+                }
+            });
             for row in &self.config.buttons {
                 ui.horizontal(|ui| {
                     let cols = row.len() as f32;
