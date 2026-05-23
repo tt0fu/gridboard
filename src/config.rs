@@ -12,15 +12,20 @@ pub struct Button {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct GUIConfig {
+    pub window_width: f32,
+    pub window_height: f32,
+
+    pub buttons: Vec<Vec<Button>>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     pub channels: u16,
     pub sample_rate: u32,
     pub buffer_size: u32,
 
-    pub window_width: f32,
-    pub window_height: f32,
-
-    pub buttons: Vec<Vec<Button>>,
+    pub gui: Option<GUIConfig>,
 }
 
 impl Config {

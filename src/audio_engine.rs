@@ -1,4 +1,4 @@
-use crate::load_audio::load_audio;
+use crate::{config::Config, load_audio::load_audio};
 use audioadapter::Adapter;
 use cpal::{
     BufferSize::Fixed,
@@ -39,7 +39,7 @@ pub struct AudioEngine {
 }
 
 impl AudioEngine {
-    pub fn from_config(config: &StreamConfig) -> Self {
+    pub fn from_stream_config(config: &StreamConfig) -> Self {
         let device = cpal::default_host()
             .default_output_device()
             .expect("Failed to find output device");
@@ -60,11 +60,15 @@ impl AudioEngine {
     }
 
     pub fn from_parameters(channels: u16, sample_rate: u32, buffer_size: u32) -> Self {
-        Self::from_config(&StreamConfig {
+        Self::from_stream_config(&StreamConfig {
             channels,
             sample_rate,
             buffer_size: Fixed(buffer_size),
         })
+    }
+
+    pub fn from_config(config: &Config) -> Self {
+        Self::from_parameters(config.channels, config.sample_rate, config.buffer_size)
     }
 
     pub fn play(&mut self, path: &Path) {
