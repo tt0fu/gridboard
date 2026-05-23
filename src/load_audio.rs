@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use rubato::{
     Fft, FixedSync, Resampler,
     audioadapter::{Adapter, AdapterIterators, AdapterMut},
@@ -13,8 +14,8 @@ pub fn load_audio(
     path: &Path,
     target_sample_rate: u32,
     target_channels: u16,
-) -> InterleavedOwned<f32> {
-    let (samples, source_rate) = decode_file(path);
+) -> Result<InterleavedOwned<f32>> {
+    let (samples, source_rate) = decode_file(path)?;
 
     resample_and_mix(
         samples,
@@ -25,8 +26,8 @@ pub fn load_audio(
 }
 
 // (samples, source sample rate)
-fn decode_file(path: &Path) -> (InterleavedOwned<f32>, u32) {
-    let file = std::fs::File::open(path).expect("Failed to open file");
+fn decode_file(path: &Path) -> Result<(InterleavedOwned<f32>, u32)> {
+    let file = std::fs::File::open(path)?;
     let mss = MediaSourceStream::new(Box::new(file), Default::default());
 
     let hint = Hint::new();
@@ -35,17 +36,16 @@ fn decode_file(path: &Path) -> (InterleavedOwned<f32>, u32) {
     let metadata_opts: MetadataOptions = Default::default();
     let decoder_opts: DecoderOptions = Default::default();
 
-    let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &format_opts, &metadata_opts)
-        .unwrap();
+    let probed =
+        symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts)?;
 
     let mut format = probed.format;
 
-    let track = format.default_track().unwrap();
+    let track = format
+        .default_track()
+        .ok_or(anyhow!("Failed to get the default track of the file"))?;
 
-    let mut decoder = symphonia::default::get_codecs()
-        .make(&track.codec_params, &decoder_opts)
-        .unwrap();
+    let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, &decoder_opts)?;
 
     let track_id = track.id;
 
@@ -77,10 +77,10 @@ fn decode_file(path: &Path) -> (InterleavedOwned<f32>, u32) {
     }
 
     let frame_count = samples.len() / channels;
-    (
-        InterleavedOwned::new_from(samples, channels, frame_count).unwrap(),
+    Ok((
+        InterleavedOwned::new_from(samples, channels, frame_count)?,
         rate,
-    )
+    ))
 }
 
 fn resample_and_mix(
@@ -88,7 +88,7 @@ fn resample_and_mix(
     source_rate: u32,
     target_rate: u32,
     target_channels: usize,
-) -> InterleavedOwned<f32> {
+) -> Result<InterleavedOwned<f32>> {
     let resampled = {
         if source_rate != target_rate {
             let ratio = target_rate as f64 / source_rate as f64;
@@ -96,8 +96,7 @@ fn resample_and_mix(
             let mut outdata = vec![0.0; 2 * source.channels() * estimate_samples];
             let outdata_capacity = outdata.len() / source.channels();
             let mut output_adapter =
-                InterleavedSlice::new_mut(&mut outdata, source.channels(), outdata_capacity)
-                    .unwrap();
+                InterleavedSlice::new_mut(&mut outdata, source.channels(), outdata_capacity)?;
             Fft::<f32>::new(
                 source_rate as usize,
                 target_rate as usize,
@@ -105,11 +104,14 @@ fn resample_and_mix(
                 1,
                 source.channels(),
                 FixedSync::Both,
-            )
-            .expect("Failed to create resampler")
-            .process_all_into_buffer(&source, &mut output_adapter, source.frames(), None)
-            .expect("Failed to resample track");
-            InterleavedOwned::new_from(outdata, source.channels(), estimate_samples + 1000).unwrap()
+            )?
+            .process_all_into_buffer(
+                &source,
+                &mut output_adapter,
+                source.frames(),
+                None,
+            )?;
+            InterleavedOwned::new_from(outdata, source.channels(), estimate_samples + 1000)?
         } else {
             source
         }
@@ -118,11 +120,14 @@ fn resample_and_mix(
     mix_channels(resampled, target_channels)
 }
 
-fn mix_channels(input: InterleavedOwned<f32>, target_count: usize) -> InterleavedOwned<f32> {
+fn mix_channels(
+    input: InterleavedOwned<f32>,
+    target_count: usize,
+) -> Result<InterleavedOwned<f32>> {
     let source_count = input.channels();
     let frames = input.frames();
     if source_count == target_count {
-        return input;
+        return Ok(input);
     }
 
     let mut output = InterleavedOwned::new(0.0f32, target_count, frames);
@@ -145,5 +150,5 @@ fn mix_channels(input: InterleavedOwned<f32>, target_count: usize) -> Interleave
             }
         }
     }
-    output
+    Ok(output)
 }

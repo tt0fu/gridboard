@@ -1,8 +1,8 @@
-use anyhow::Result;
 use crate::{
     audio_engine::AudioEngine,
     protocol::{DEFAULT_ADDRESS, Request, Response},
 };
+use anyhow::Result;
 use serde_json::{from_str, to_string};
 use std::sync::{Arc, Mutex};
 use tokio::{
@@ -51,10 +51,10 @@ async fn handle_client(stream: TcpStream, audio_engine: Arc<Mutex<AudioEngine>>)
                 .lock()
                 .expect("Failed to aquire audio engine mutex");
             match request {
-                Request::Play { ref path } => {
-                    engine.play(path);
-                    Response::Ok
-                }
+                Request::Play { ref path } => match engine.play(path) {
+                    Ok(_) => Response::Ok,
+                    Err(err) => Response::Error(err.to_string()),
+                },
                 Request::StopAll => {
                     engine.stop_all();
                     Response::Ok

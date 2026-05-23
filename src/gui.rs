@@ -89,7 +89,8 @@ impl eframe::App for MyApp {
                             self.audio_engine
                                 .lock()
                                 .expect("Failed to aquire audio engine mutex")
-                                .play(&button.sound);
+                                .play(&button.sound)
+                                .expect("Failed to play a sound");
                         }
                     }
                 });

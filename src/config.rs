@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -29,11 +30,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_jsonc(path: &Path) -> Self {
-        serde_json::from_value(
-            jsonc::parse_jsonc(&fs::read_to_string(path).expect("Failed to read config file"))
-                .expect("Failed to parse config"),
-        )
-        .expect("Failed to deserealize paresd config")
+    pub fn from_jsonc(path: &Path) -> Result<Self> {
+        Ok(serde_json::from_value(jsonc::parse_jsonc(
+            &fs::read_to_string(path)?,
+        )?)?)
     }
 }
