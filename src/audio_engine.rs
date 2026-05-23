@@ -9,7 +9,7 @@ use rubato::audioadapter_buffers::owned::InterleavedOwned;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 
 struct Play {
@@ -33,9 +33,9 @@ impl Play {
 pub struct AudioEngine {
     _stream: Stream,
     config: StreamConfig,
-    cache: Mutex<HashMap<PathBuf, Arc<InterleavedOwned<f32>>>>,
+    cache: HashMap<PathBuf, Arc<InterleavedOwned<f32>>>,
     plays: Arc<Mutex<Vec<Play>>>,
-    volume: Arc<Mutex<f32>>,
+    volume: Arc<RwLock<f32>>,
 }
 
 impl AudioEngine {
@@ -45,7 +45,7 @@ impl AudioEngine {
             .expect("Failed to find output device");
 
         let plays = Arc::new(Mutex::new(Vec::new()));
-        let volume = Arc::new(Mutex::new(1.0));
+        let volume = Arc::new(RwLock::new(1.0));
 
         let stream = Self::build_stream(&device, &config, plays.clone(), volume.clone());
         stream.play().expect("Failed to play stream");
@@ -53,7 +53,7 @@ impl AudioEngine {
         Self {
             _stream: stream,
             config: config.clone(),
-            cache: Mutex::new(HashMap::new()),
+            cache: HashMap::new(),
             plays,
             volume,
         }
@@ -68,9 +68,8 @@ impl AudioEngine {
     }
 
     pub fn play(&mut self, path: &Path) {
-        let mut cache = self.cache.lock().expect("Failed to aquire cache mutex");
         let path_buf: PathBuf = path.into();
-        let audio = match cache.get(&path_buf) {
+        let audio = match self.cache.get(&path_buf) {
             Some(cached) => cached,
             None => {
                 let generated = Arc::new(load_audio(
@@ -78,7 +77,7 @@ impl AudioEngine {
                     self.config.sample_rate,
                     self.config.channels,
                 ));
-                cache.insert(path_buf, generated.clone());
+                self.cache.insert(path_buf, generated.clone());
                 &generated.clone()
             }
         };
@@ -96,18 +95,18 @@ impl AudioEngine {
     }
 
     pub fn get_volume(&mut self) -> f32 {
-        *self.volume.lock().expect("Failed to aquire volume mutex")
+        *self.volume.read().expect("Failed to aquire volume lock")
     }
 
     pub fn set_volume(&mut self, volume: f32) {
-        *self.volume.lock().expect("Failed to aquire volume mutex") = volume;
+        *self.volume.write().expect("Failed to aquire volume mutex") = volume;
     }
 
     fn build_stream(
         device: &Device,
         config: &StreamConfig,
         plays: Arc<Mutex<Vec<Play>>>,
-        volume: Arc<Mutex<f32>>,
+        volume: Arc<RwLock<f32>>,
     ) -> cpal::Stream {
         let channels = config.channels as usize;
 
@@ -116,7 +115,7 @@ impl AudioEngine {
                 &config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     let mut plays_guard = plays.lock().expect("Failed to aquire plays mutex");
-                    let volume = *volume.lock().expect("Failed to aquire volume mutex");
+                    let volume = *volume.read().expect("Failed to aquire volume lock");
                     data.fill(0.0f32);
                     for frame in data.chunks_mut(channels) {
                         plays_guard.retain(|a| a.is_playing());
