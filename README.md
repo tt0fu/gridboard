@@ -7,7 +7,7 @@
 ### Main program
 
 ```
-gridboard [path/to/config.jsonc] [-h | --help]
+gridboard [path/to/config.jsonc] [-h | --help] [-v | --version]
 ```
 
 If no config path is provided, the app will get it's config from `$XDG_CONFIG_HOME/gridboard/config.jsonc` on Linux, `%APPDATA%\gridboard\config.jsonc` on Windows, or `~/Library/Application Support/gridboard/config.jsonc` on MacOS.
