@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
     let response: Response = serde_json::from_str(&response_string)?;
 
     match response {
-        Response::Ok => println!("OK"),
+        Response::Ok => println!("Ok"),
         Response::Volume(v) => println!("{}", v),
         Response::Error(e) => eprintln!("Error: {}", e),
     }
