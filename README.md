@@ -15,7 +15,7 @@ If no config path is provided, the app will get it's config from `$XDG_CONFIG_HO
 > [!NOTE]
 > The app will not run without a valid config file, so you must create one before running. An example of a valid config file can be found below.
 
-### Remote interation
+### Remote interaction
 
 ```
 gridboardctl <command>
