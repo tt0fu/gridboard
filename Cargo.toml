@@ -2,16 +2,17 @@
 name = "gridboard"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 audioadapter = "3.0.0"
-cpal = {version = "0.17.3", features = ["jack"]}
-rubato = {version="2.0.0", features= ["fft_resampler"]}
-symphonia = {version = "0.5.5", features = ["all"]}
+cpal = { version = "0.17.3", features = ["jack"] }
+rubato = { version = "2.0.0", features = ["fft_resampler"] }
+symphonia = { version = "0.5.5", features = ["all"] }
 
 egui = "0.34.2"
 egui_extras = { version = "0.34.2", features = ["default", "image"] }
-eframe = { version="0.34.2", default-features = true}
+eframe = { version = "0.34.2", default-features = true }
 log = "0.4.27"
 
 serde = { version = "1.0.228", features = ["derive"] }

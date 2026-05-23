@@ -1,6 +1,5 @@
 {
   lib,
-  stdenv,
   rustPlatform,
   pkg-config,
   alsa-lib,
@@ -79,5 +78,6 @@ rustPlatform.buildRustPackage rec {
   meta = {
     description = "A simple soundboard";
     mainProgram = name;
+    license = lib.licenses.gpl3;
   };
 }
