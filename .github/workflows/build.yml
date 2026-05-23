@@ -22,23 +22,15 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: gridboard.exe
-            build_command: cargo build --release
-            output_path: target/release/gridboard.exe
+            ext: .exe
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: gridboard
-            build_command: cargo build --release
-            output_path: target/release/gridboard
+            ext: ""
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install ALSA and Jack development libraries
         if: matrix.os == 'ubuntu-latest'
@@ -62,14 +54,17 @@ jobs:
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-build-
 
-      - name: Build release executable
-        run: ${{ matrix.build_command }}
+      - name: Build release executables
+        run: cargo build --release
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.output_path }}
+          name: binaries-${{ matrix.os }}
+          path: |
+            target/release/gridboard${{ matrix.ext }}
+            target/release/gridboardctl${{ matrix.ext }}
+          if-no-files-found: error
 
   release:
     name: Create draft release
@@ -95,7 +90,9 @@ jobs:
           body: ${{ github.event.inputs.release_notes }}
           draft: true
           files: |
-            artifacts/gridboard.exe
             artifacts/gridboard
+            artifacts/gridboardctl
+            artifacts/gridboard.exe
+            artifacts/gridboardctl.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
