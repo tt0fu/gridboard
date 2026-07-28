@@ -1,4 +1,3 @@
 /target
 /result
-**/*.mp3
-**/*.wav
+.direnv
