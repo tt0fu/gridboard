@@ -3,6 +3,8 @@
   "sample_rate": 48000, // The sample rate to open the audio stream with.
   "buffer_size": 4096, // The buffer size of the audio stream. The audio will start tearing if set too low.
   "gui": {
+    "window_width": 500, // The initial width of the window.
+    "window_height": 500, // The initial height of the window.
     // Can be set to null to make the engine run without a GUI.
     "buttons": [
       // The button definitions.
