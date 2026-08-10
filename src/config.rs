@@ -17,6 +17,8 @@ pub struct Button {
 #[derive(Default, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GUIConfig {
+    pub window_width: f32,
+    pub window_height: f32,
     pub buttons: Vec<Vec<Button>>,
 }
 
@@ -61,6 +63,8 @@ impl Default for Config {
             sample_rate: 48000,
             buffer_size: 4096,
             gui: Some(GUIConfig {
+                window_width: 600.0,
+                window_height: 400.0,
                 buttons: vec![vec![Button {
                     name: message,
                     sound: PathBuf::from("/path/to/your/sound.mp3"),

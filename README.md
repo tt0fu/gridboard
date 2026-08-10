@@ -34,8 +34,6 @@ Commands:
   "buffer_size": 4096, // The buffer size of the audio stream. The audio will start tearing if set too low.
   "gui": {
     // Can be set to null to make the engine run without a GUI.
-    "window_width": 500, // The initial width of the window.
-    "window_height": 500, // The initial height of the window.
     "buttons": [
       // The button definitions.
       [
@@ -43,6 +41,7 @@ Commands:
         {
           "name": "Sound 1", // The text to be displayed on the button.
           "sound": "/path/to/sound 1.mp3", // The path to the sound to be played with this button.
+          "image": "/path/to/image 1.png", // The path to the image to be displayed on this button. Can be null or omitted to display a button without an image.
         },
         {
           "name": "Sound 2",

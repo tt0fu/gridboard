@@ -1,10 +1,13 @@
 use crate::{audio_engine::AudioEngine, config::GUIConfig};
 use iced::{
-    Center, ContentFit, Element,
+    Center, Color, ContentFit, Element,
     Length::{Fill, FillPortion},
-    Result,
+    Result, Size, Theme,
     alignment::Horizontal::Left,
+    color,
+    theme::{Custom, Palette},
     widget,
+    window::Settings,
 };
 use std::{
     path::PathBuf,
@@ -122,6 +125,7 @@ impl State {
 }
 
 pub fn run_gui(config: GUIConfig, audio_engine: Arc<Mutex<AudioEngine>>) -> Result {
+    let size = Size::new(config.window_width, config.window_height);
     let app = iced::application(
         move || State {
             audio_engine: audio_engine.clone(),
@@ -129,6 +133,24 @@ pub fn run_gui(config: GUIConfig, audio_engine: Arc<Mutex<AudioEngine>>) -> Resu
         },
         State::update,
         State::view,
-    );
+    )
+    .window_size(size)
+    .title("gridboard")
+    .theme(Theme::Custom(Arc::new(Custom::new(
+        "Frosted".to_string(),
+        Palette {
+            background: Color::from_rgba(0.0, 0.0, 0.0, 0.0),
+            text: Color::from_rgba(1.0, 1.0, 1.0, 1.0),
+            primary: Color::from_rgba(0.3, 0.3, 0.3, 0.5),
+            success: color!(0x12664f),
+            warning: color!(0xffc14e),
+            danger: color!(0xc3423f),
+        },
+    ))))
+    .window(Settings {
+        transparent: true,
+        blur: true,
+        ..Default::default()
+    });
     app.run()
 }
