@@ -1,10 +1,15 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use anyhow::{Result, anyhow};
-use directories::ProjectDirs;
-use gridboard::{audio_engine::AudioEngine, config::Config, gui::run_gui, server::run_ipc_server};
+use gridboard::{
+    audio_engine::AudioEngine,
+    config::{self, Config},
+    gui::run_gui,
+    server::run_ipc_server,
+};
 use shellexpand::full;
 use std::{
     env::args,
+    fs,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -12,10 +17,9 @@ use std::{
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = args().collect();
-    let mut config_path = None;
+    let mut cli_path = None;
 
-    let default_config_path =
-        ProjectDirs::from("", "", "gridboard").map(|p| p.config_dir().join("config.jsonc"));
+    let default_config_path = config::default_config_path();
 
     for arg in args.iter().skip(1) {
         match arg.as_str() {
@@ -37,17 +41,26 @@ async fn main() -> Result<()> {
                 return Ok(());
             }
             _ if !arg.starts_with('-') => {
-                config_path = Some(arg.as_str());
+                cli_path = Some(arg.as_str());
             }
             other => anyhow::bail!("Unknown argument: {}", other),
         }
     }
 
-    let config = Config::from_jsonc(&match config_path {
+    let config = Config::from_jsonc(&match cli_path {
         Some(path) => PathBuf::from(full(path).unwrap().as_ref()),
-        None => default_config_path.ok_or(anyhow!(
-            "Failed to resolve the default config path. You must provide one as an argument",
-        ))?,
+        None => {
+            let path = default_config_path.ok_or(anyhow!(
+                "Failed to resolve the default config path. You must provide one as an argument.",
+            ))?;
+            if !fs::exists(path.clone())? {
+                if let Some(parent) = path.as_path().parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                Config::default().to_jsonc(path.as_path())?
+            }
+            path
+        }
     })?;
 
     let audio_engine = Arc::new(Mutex::new(AudioEngine::from_config(&config)?));

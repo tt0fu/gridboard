@@ -12,9 +12,6 @@ gridboard [path/to/config.jsonc] [-h | --help] [-v | --version]
 
 If no config path is provided, the app will get it's config from `$XDG_CONFIG_HOME/gridboard/config.jsonc` on Linux, `%APPDATA%\gridboard\config.jsonc` on Windows, or `~/Library/Application Support/gridboard/config.jsonc` on MacOS.
 
-> [!NOTE]
-> The app will not run without a valid config file, so you must create one before running. An example of a valid config file can be found below.
-
 ### Remote interaction
 
 ```
@@ -28,7 +25,7 @@ Commands:
 - `volume`: Get the current volume (1.0 is full volume).
 - `volume <volume>`: Set the current volume (1.0 is full volume).
 
-## [Example config](example-config.jsonc)
+## [Example config](assets/example-config.jsonc)
 
 ```jsonc
 {
