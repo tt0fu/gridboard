@@ -124,13 +124,14 @@ impl AudioEngine {
         Self::from_parameters(config.channels, config.sample_rate, config.buffer_size)
     }
 
-    pub fn play(&mut self, path: &Path) -> Result<()> {
+    pub fn play(&mut self, path: &Path) {
         let path = PathBuf::from(path);
+        let path_display = path.display().to_string();
         let sample_rate = self.config.sample_rate;
         let channels = self.config.channels;
         let (sender, receiver) = sync_channel(PLAY_QUEUE_CHUNKS);
 
-        std::thread::Builder::new()
+        let spawn_result = std::thread::Builder::new()
             .name("gridboard-audio".to_string())
             .spawn(move || {
                 let mut audio = match StreamingAudio::open(&path, sample_rate, channels) {
@@ -145,13 +146,17 @@ impl AudioEngine {
                         break;
                     }
                 }
-            })?;
+            });
+
+        if let Err(err) = spawn_result {
+            eprintln!("Failed to start audio playback for {path_display}: {err}");
+            return;
+        }
 
         self.plays
             .lock()
             .expect("Failed to aquire plays mutex")
             .push(Play::new(receiver, channels as usize));
-        Ok(())
     }
 
     pub fn stop_all(&mut self) {

@@ -33,9 +33,7 @@ impl State {
             .lock()
             .expect("Failed to aquire audio engine mutex");
         match message {
-            Message::Play(path) => guard.play(&path).unwrap_or_else(|err| {
-                eprintln!("Error playing sound {}: {}", path.to_string_lossy(), err);
-            }),
+            Message::Play(path) => guard.play(&path),
             Message::Stop => guard.stop_all(),
             Message::Volume(volume) => guard.set_volume(volume as f32 / 100.0),
         }

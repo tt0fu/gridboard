@@ -51,10 +51,10 @@ async fn handle_client(stream: TcpStream, audio_engine: Arc<Mutex<AudioEngine>>)
                 .lock()
                 .expect("Failed to aquire audio engine mutex");
             match request {
-                Request::Play { ref path } => match engine.play(path) {
-                    Ok(_) => Response::Ok,
-                    Err(err) => Response::Error(err.to_string()),
-                },
+                Request::Play { ref path } => {
+                    engine.play(path);
+                    Response::Ok
+                }
                 Request::StopAll => {
                     engine.stop_all();
                     Response::Ok
