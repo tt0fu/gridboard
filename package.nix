@@ -8,6 +8,12 @@
   pipewire,
   jack2,
   libGL,
+  mesa,
+  libglvnd,
+  vulkan-loader,
+  libdrm,
+  libgbm,
+  libxcb,
   fontconfig,
   libxkbcommon,
   wayland,
@@ -47,6 +53,12 @@ rustPlatform.buildRustPackage rec {
     jack2
 
     libGL
+    mesa
+    libglvnd
+    vulkan-loader
+    libdrm
+    libgbm
+    libxcb
     fontconfig
     libxkbcommon
     wayland

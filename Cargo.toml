@@ -12,7 +12,18 @@ rubato = { version = "5.0.1", features = ["fft_resampler"] }
 symphonia = { version = "0.5.5", features = ["all"] }
 
 # ui
-iced = { version = "0.14.0", features = ["image"] }
+eframe = { version = "0.35.0", default-features = false, features = [
+    "wgpu",
+    "wayland",
+    "x11",
+    "default_fonts",
+] }
+image = { version = "0.25", default-features = false, features = [
+    "png",
+    "jpeg",
+    "gif",
+    "webp",
+] }
 
 # config
 serde = { version = "1.0.229", features = ["derive"] }
@@ -24,4 +35,3 @@ shellexpand = "3.1.2"
 # ipc
 anyhow = "1.0.104"
 tokio = { version = "1.54.1", features = ["full"] }
-iced_core = "0.14.0"
