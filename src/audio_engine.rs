@@ -1,6 +1,6 @@
 use crate::{config::Config, load_audio::load_audio};
 use anyhow::{Result, anyhow};
-use audioadapter::Adapter;
+use audioadapter::{Adapter, AdapterIterators};
 use cpal::{
     BufferSize::Fixed,
     Stream, StreamConfig,
@@ -22,11 +22,17 @@ impl Play {
     fn new(audio: Arc<InterleavedOwned<f32>>) -> Self {
         Self { audio, frame: 0 }
     }
+
     fn is_playing(&self) -> bool {
         self.frame < self.audio.frames()
     }
-    fn advance(&mut self, slice: &mut [f32]) {
-        self.audio.copy_from_frame_to_slice(self.frame, 0, slice);
+
+    fn advance(&mut self, output: &mut [f32], volume: f32) {
+        if let Some(frame) = self.audio.iter_frame(self.frame) {
+            for (sample, output) in frame.zip(output) {
+                *output += sample * volume;
+            }
+        }
         self.frame += 1;
     }
 }
@@ -47,27 +53,22 @@ impl AudioEngine {
 
         let plays: Arc<Mutex<Vec<Play>>> = Arc::new(Mutex::new(Vec::new()));
         let volume = Arc::new(RwLock::new(1.0));
-
         let channels = config.channels as usize;
 
         let stream = device.build_output_stream(
-            &config,
+            config,
             {
-                let plays_clone = plays.clone();
-                let volume_clone = volume.clone();
+                let plays = plays.clone();
+                let volume = volume.clone();
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    let mut plays_guard = plays_clone.lock().expect("Failed to aquire plays mutex");
-                    let volume = *volume_clone.read().expect("Failed to aquire volume lock");
-                    data.fill(0.0f32);
-                    for frame in data.chunks_mut(channels) {
-                        plays_guard.retain(|a| a.is_playing());
+                    let mut plays = plays.lock().expect("Failed to aquire plays mutex");
+                    let volume = *volume.read().expect("Failed to aquire volume lock");
+                    data.fill(0.0);
 
-                        let mut cur = vec![0.0f32; channels];
-                        for play in plays_guard.iter_mut() {
-                            play.advance(cur.as_mut_slice());
-                            for i in 0..channels {
-                                frame[i] += cur[i] * volume;
-                            }
+                    for frame in data.chunks_mut(channels) {
+                        plays.retain(Play::is_playing);
+                        for play in plays.iter_mut() {
+                            play.advance(frame, volume);
                         }
                     }
                 }
@@ -99,23 +100,23 @@ impl AudioEngine {
     }
 
     pub fn play(&mut self, path: &Path) -> Result<()> {
-        let path_buf: PathBuf = path.into();
-        let audio = match self.cache.get(&path_buf) {
-            Some(cached) => cached,
+        let audio = match self.cache.get(path) {
+            Some(audio) => audio.clone(),
             None => {
-                let generated = Arc::new(load_audio(
+                let audio = Arc::new(load_audio(
                     path,
                     self.config.sample_rate,
                     self.config.channels,
                 )?);
-                self.cache.insert(path_buf, generated.clone());
-                &generated.clone()
+                self.cache.insert(path.into(), audio.clone());
+                audio
             }
         };
+
         self.plays
             .lock()
             .expect("Failed to aquire plays mutex")
-            .push(Play::new(audio.clone()));
+            .push(Play::new(audio));
         Ok(())
     }
 

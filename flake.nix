@@ -22,6 +22,7 @@
           rust-analyzer
           gdb
           cargo-expand
+          cargo-edit
 
           pkg-config
           makeWrapper
