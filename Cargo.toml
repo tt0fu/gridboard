@@ -24,6 +24,7 @@ image = { version = "0.25", default-features = false, features = [
     "gif",
     "webp",
 ] }
+rfd = "0.16"
 
 # config
 serde = { version = "1.0.229", features = ["derive"] }

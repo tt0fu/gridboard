@@ -12,6 +12,8 @@ pub struct Button {
     pub name: String,
     pub sound: PathBuf,
     pub image: Option<PathBuf>,
+    pub position: [i32; 2],
+    pub size: [i32; 2],
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -19,7 +21,8 @@ pub struct Button {
 pub struct GUIConfig {
     pub window_width: f32,
     pub window_height: f32,
-    pub buttons: Vec<Vec<Button>>,
+    pub grid_size: [i32; 2],
+    pub buttons: Vec<Button>,
 }
 
 pub fn default_config_path() -> Option<PathBuf> {
@@ -51,7 +54,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         let message = format!(
-            "Welcome to gridboard! This button does nothing because it isn't tied to an existing sound. Go to {} and fill the config with sounds and images.",
+            "Welcome to gridboard! This button does nothing because it isn't tied to an existing sound. Edit {} or enter the edit mode in the top left corner.",
             default_config_path()
                 .expect(
                     "Failed to resolve the default config path. You must provide one as an argument."
@@ -65,11 +68,14 @@ impl Default for Config {
             gui: Some(GUIConfig {
                 window_width: 600.0,
                 window_height: 400.0,
-                buttons: vec![vec![Button {
+                grid_size: [8, 6],
+                buttons: vec![Button {
                     name: message,
                     sound: PathBuf::from("/path/to/your/sound.mp3"),
                     image: None,
-                }]],
+                    position: [2, 2],
+                    size: [4, 2],
+                }],
             }),
         }
     }

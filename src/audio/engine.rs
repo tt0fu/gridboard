@@ -1,4 +1,5 @@
-use crate::{config::Config, stream_audio::StreamingAudio};
+use super::stream::StreamingAudio;
+use crate::config::Config;
 use anyhow::{Result, anyhow};
 use cpal::{
     BufferSize::Fixed,

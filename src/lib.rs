@@ -1,7 +1,6 @@
-pub mod audio_engine;
+//! Gridboard: a simple soundboard with a grid-based GUI.
+
+pub mod audio;
 pub mod config;
 pub mod gui;
-pub mod load_audio;
-pub mod protocol;
-pub mod server;
-pub mod stream_audio;
+pub mod ipc;

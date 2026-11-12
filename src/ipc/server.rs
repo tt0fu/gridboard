@@ -1,7 +1,5 @@
-use crate::{
-    audio_engine::AudioEngine,
-    protocol::{DEFAULT_ADDRESS, Request, Response},
-};
+use super::protocol::{DEFAULT_ADDRESS, Request, Response};
+use crate::audio::AudioEngine;
 use anyhow::Result;
 use serde_json::{from_str, to_string};
 use std::sync::{Arc, Mutex};

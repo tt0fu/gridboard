@@ -1,4 +1,4 @@
-use gridboard::protocol::{DEFAULT_ADDRESS, Request, Response};
+use gridboard::ipc::{DEFAULT_ADDRESS, Request, Response};
 use std::{
     env::args,
     io::{BufRead, BufReader, Write},

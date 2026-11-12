@@ -33,34 +33,38 @@ Commands:
   "sample_rate": 48000, // The sample rate to open the audio stream with.
   "buffer_size": 4096, // The buffer size of the audio stream. The audio will start tearing if set too low.
   "gui": {
+    // Can be set to null to make the engine run without a GUI.
     "window_width": 500, // The initial width of the window.
     "window_height": 500, // The initial height of the window.
-    // Can be set to null to make the engine run without a GUI.
+    "grid_size": [4, 4], // The grid dimentions the button area has. [width, height]
     "buttons": [
       // The button definitions.
-      [
-        // The first row of buttons.
-        {
-          "name": "Sound 1", // The text to be displayed on the button.
-          "sound": "/path/to/sound 1.mp3", // The path to the sound to be played with this button.
-          "image": "/path/to/image 1.png", // The path to the image to be displayed on this button. Can be null or omitted to display a button without an image.
-        },
-        {
-          "name": "Sound 2",
-          "sound": "/path/to/sound 2.wav",
-        },
-      ],
-      [
-        // The second row of buttons.
-        {
-          "name": "Sound 3",
-          "sound": "/path/to/sound 3.flac",
-        },
-        {
-          "name": "Sound 4",
-          "sound": "/path/to/sound 4.ogg",
-        },
-      ],
+      {
+        "name": "Sound 1", // The text to be displayed on the button.
+        "sound": "/path/to/sound 1.mp3", // The path to the sound to be played with this button.
+        "image": "/path/to/image 1.png", // The path to the image to be displayed on this button. Can be null or omitted to display a button without an image.
+        "position": [0, 0], // The position [of the button in grid units, starting from the top left of the button area. [right, down]
+        "size": [1, 1], // The size of the button in grid units. [width, height]
+      },
+      {
+        "name": "Sound 2",
+        "sound": "/path/to/sound 2.wav",
+        "image": "/path/to/image 2.jpg",
+        "position": [2, 0],
+        "size": [2, 2],
+      },
+      {
+        "name": "Sound 3",
+        "sound": "/path/to/sound 3.flac",
+        "position": [0, 2],
+        "size": [4, 1],
+      },
+      {
+        "name": "Sound 4",
+        "sound": "/path/to/sound 4.ogg",
+        "position": [1, 3],
+        "size": [2, 1],
+      },
     ],
   },
 }

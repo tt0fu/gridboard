@@ -1,10 +1,10 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use anyhow::{Result, anyhow};
 use gridboard::{
-    audio_engine::AudioEngine,
+    audio::AudioEngine,
     config::{self, Config},
     gui::run_gui,
-    server::run_ipc_server,
+    ipc::run_ipc_server,
 };
 use shellexpand::full;
 use std::{
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let config = Config::from_jsonc(&match cli_path {
+    let config_path = match cli_path {
         Some(path) => PathBuf::from(full(path).unwrap().as_ref()),
         None => {
             let path = default_config_path.ok_or(anyhow!(
@@ -61,21 +61,21 @@ async fn main() -> Result<()> {
             }
             path
         }
-    })?;
+    };
 
+    let config = Config::from_jsonc(&config_path)?;
     let audio_engine = Arc::new(Mutex::new(AudioEngine::from_config(&config)?));
 
-    match config.gui {
-        Some(gui_config) => {
-            let engine = audio_engine.clone();
-            tokio::spawn(async move {
-                if let Err(e) = run_ipc_server(engine).await {
-                    eprintln!("IPC server error: {}", e);
-                }
-            });
-            run_gui(gui_config, audio_engine.clone())?;
-        }
-        None => run_ipc_server(audio_engine).await?,
+    if config.gui.is_some() {
+        let engine = audio_engine.clone();
+        tokio::spawn(async move {
+            if let Err(e) = run_ipc_server(engine).await {
+                eprintln!("IPC server error: {}", e);
+            }
+        });
+        run_gui(config_path, config, audio_engine)?;
+    } else {
+        run_ipc_server(audio_engine).await?;
     }
     Ok(())
 }
