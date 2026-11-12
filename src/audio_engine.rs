@@ -1,46 +1,72 @@
-use crate::{config::Config, load_audio::load_audio};
+use crate::{config::Config, stream_audio::StreamingAudio};
 use anyhow::{Result, anyhow};
-use audioadapter::{Adapter, AdapterIterators};
 use cpal::{
     BufferSize::Fixed,
     Stream, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
-use rubato::audioadapter_buffers::owned::InterleavedOwned;
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, RwLock},
+    sync::{
+        Arc, Mutex, RwLock,
+        mpsc::{Receiver, TryRecvError, sync_channel},
+    },
 };
 
+const PLAY_QUEUE_CHUNKS: usize = 8;
+
 struct Play {
-    audio: Arc<InterleavedOwned<f32>>,
-    frame: usize,
+    chunks: Receiver<Vec<f32>>,
+    current: Vec<f32>,
+    position: usize,
+    channels: usize,
+    finished: bool,
 }
 
 impl Play {
-    fn new(audio: Arc<InterleavedOwned<f32>>) -> Self {
-        Self { audio, frame: 0 }
+    fn new(chunks: Receiver<Vec<f32>>, channels: usize) -> Self {
+        Self {
+            chunks,
+            current: Vec::new(),
+            position: 0,
+            channels,
+            finished: false,
+        }
     }
 
     fn is_playing(&self) -> bool {
-        self.frame < self.audio.frames()
+        !self.finished
     }
 
     fn advance(&mut self, output: &mut [f32], volume: f32) {
-        if let Some(frame) = self.audio.iter_frame(self.frame) {
-            for (sample, output) in frame.zip(output) {
-                *output += sample * volume;
+        while self.position >= self.current.len() {
+            match self.chunks.try_recv() {
+                Ok(chunk) => {
+                    self.current = chunk;
+                    self.position = 0;
+                }
+                Err(TryRecvError::Empty) => return,
+                Err(TryRecvError::Disconnected) => {
+                    self.finished = true;
+                    return;
+                }
             }
         }
-        self.frame += 1;
+
+        let frame_end = (self.position + self.channels).min(self.current.len());
+        for (output, sample) in output
+            .iter_mut()
+            .zip(&self.current[self.position..frame_end])
+        {
+            *output += sample * volume;
+        }
+        self.position = frame_end;
     }
 }
 
 pub struct AudioEngine {
     _stream: Stream,
     config: StreamConfig,
-    cache: HashMap<PathBuf, Arc<InterleavedOwned<f32>>>,
     plays: Arc<Mutex<Vec<Play>>>,
     volume: Arc<RwLock<f32>>,
 }
@@ -81,7 +107,6 @@ impl AudioEngine {
         Ok(Self {
             _stream: stream,
             config: config.clone(),
-            cache: HashMap::new(),
             plays,
             volume,
         })
@@ -100,23 +125,32 @@ impl AudioEngine {
     }
 
     pub fn play(&mut self, path: &Path) -> Result<()> {
-        let audio = match self.cache.get(path) {
-            Some(audio) => audio.clone(),
-            None => {
-                let audio = Arc::new(load_audio(
-                    path,
-                    self.config.sample_rate,
-                    self.config.channels,
-                )?);
-                self.cache.insert(path.into(), audio.clone());
-                audio
-            }
-        };
+        let path = PathBuf::from(path);
+        let sample_rate = self.config.sample_rate;
+        let channels = self.config.channels;
+        let (sender, receiver) = sync_channel(PLAY_QUEUE_CHUNKS);
+
+        std::thread::Builder::new()
+            .name("gridboard-audio".to_string())
+            .spawn(move || {
+                let mut audio = match StreamingAudio::open(&path, sample_rate, channels) {
+                    Ok(audio) => audio,
+                    Err(err) => {
+                        eprintln!("Failed to prepare audio {}: {err}", path.display());
+                        return;
+                    }
+                };
+                while let Some(chunk) = audio.next_chunk() {
+                    if sender.send(chunk).is_err() {
+                        break;
+                    }
+                }
+            })?;
 
         self.plays
             .lock()
             .expect("Failed to aquire plays mutex")
-            .push(Play::new(audio));
+            .push(Play::new(receiver, channels as usize));
         Ok(())
     }
 
