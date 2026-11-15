@@ -23,7 +23,10 @@ use super::selection::{GridSelection, cell_at, selection_preview_area};
 use super::texture::ButtonImage;
 
 const SPACING: f32 = 5.0;
-const TOOLBAR_HEIGHT: f32 = 40.0;
+const TOOLBAR_HEIGHT: f32 = 50.0;
+
+const MAX_CLICK_DIST: f32 = 24.0;
+const MAX_CLICK_DURATION: f64 = 2.0;
 
 struct State {
     config_path: PathBuf,
@@ -99,7 +102,7 @@ impl State {
     }
 
     fn grid_size_controls(&mut self, ui: &mut egui::Ui) {
-        let button_size = Vec2::new(58.0, 24.0);
+        let button_size = Vec2::new(58.0, TOOLBAR_HEIGHT - 2.0 * SPACING);
         let mut changed = false;
 
         if ui
@@ -291,7 +294,7 @@ impl State {
 
                 let toggle = ui
                     .add_sized(
-                        [120.0, 24.0],
+                        [120.0, TOOLBAR_HEIGHT - 2.0 * SPACING],
                         egui::Checkbox::new(&mut self.edit_mode, "Edit mode"),
                     )
                     .on_hover_text(
@@ -318,7 +321,7 @@ impl State {
                     };
                     let add = ui
                         .add_sized(
-                            [110.0, 24.0],
+                            [110.0, TOOLBAR_HEIGHT - 2.0 * SPACING],
                             egui::Button::new(label).selected(self.add_mode),
                         )
                         .on_hover_text(tooltip);
@@ -336,7 +339,10 @@ impl State {
                     self.grid_size_controls(ui);
                 } else {
                     if ui
-                        .add_sized([80.0, 24.0], egui::Button::new("stop all"))
+                        .add_sized(
+                            [80.0, TOOLBAR_HEIGHT - 2.0 * SPACING],
+                            egui::Button::new("stop all"),
+                        )
                         .clicked()
                     {
                         self.audio_engine
@@ -346,7 +352,10 @@ impl State {
                     }
 
                     if ui
-                        .add_sized([105.0, 24.0], egui::Button::new("reset volume"))
+                        .add_sized(
+                            [105.0, TOOLBAR_HEIGHT - 2.0 * SPACING],
+                            egui::Button::new("reset volume"),
+                        )
                         .clicked()
                     {
                         self.audio_engine
@@ -372,7 +381,7 @@ impl State {
                     ui.spacing_mut().slider_width = old_slider_width;
 
                     let value = ui.add_sized(
-                        [value_width, 24.0],
+                        [value_width, TOOLBAR_HEIGHT - 2.0 * SPACING],
                         egui::DragValue::new(&mut volume)
                             .range(0.0..=3.0)
                             .speed(0.01)
@@ -499,7 +508,7 @@ impl eframe::App for State {
 
                     if group_selected {
                         let (body_rect, response) =
-                            ui.allocate_exact_size(rect.size(), Sense::click_and_drag());
+                            ui.allocate_exact_size(rect.size(), Sense::drag());
                         let has_image = image.texture().is_some();
                         paint_button_background(ui, body_rect, Some(&image), &response);
 
@@ -605,6 +614,13 @@ impl eframe::App for State {
     }
 }
 
+fn configure_input(ctx: &egui::Context) {
+    ctx.options_mut(|options| {
+        options.input_options.max_click_dist = MAX_CLICK_DIST;
+        options.input_options.max_click_duration = MAX_CLICK_DURATION;
+    });
+}
+
 pub fn run_gui(
     config_path: PathBuf,
     config: Config,
@@ -628,7 +644,10 @@ pub fn run_gui(
     eframe::run_native(
         "gridboard",
         options,
-        Box::new(move |_cc| Ok(Box::new(State::new(config_path, config, audio_engine)))),
+        Box::new(move |cc| {
+            configure_input(&cc.egui_ctx);
+            Ok(Box::new(State::new(config_path, config, audio_engine)))
+        }),
     )
     .map_err(|err| anyhow::anyhow!(err.to_string()))
 }
